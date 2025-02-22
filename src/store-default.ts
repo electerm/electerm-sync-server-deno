@@ -1,12 +1,14 @@
-import { read, write } from "./file-store.ts";
+import { exists, join } from "../deps.ts";
+import * as fileStore from "./file-store.ts";
 
-let userStore = { read, write };
+const userStorePath = join(Deno.cwd(), "src", "store.ts");
 
-try {
-  const customStore = await import("./store.ts");
-  userStore = customStore.default;
-} catch {
-  // Use default file store if custom store doesn't exist
+let userStore;
+
+if (await exists(userStorePath)) {
+  userStore = await import(userStorePath);
+} else {
+  userStore = fileStore;
 }
 
 export default userStore;

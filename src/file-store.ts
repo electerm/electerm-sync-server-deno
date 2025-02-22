@@ -1,24 +1,40 @@
-// src/file-store.ts
-import { load } from "../deps.ts";
+import { join } from "../deps.ts";
+import type { RouterContext } from "../deps.ts";
 
-const env = await load();
-const folder = env.FILE_STORE_PATH || Deno.cwd();
+const folder = Deno.env.get("FILE_STORE_PATH") || Deno.cwd();
 
-export async function write(id: string, data: Record<string, unknown>): Promise<void> {
-  const path = `${folder}/${id}.json`;
-  const str = JSON.stringify(data || {});
+export async function write(ctx: RouterContext<string>) {
+  const body = await ctx.request.body().value;
+  const id = ctx.state.user?.id;
+  
+  if (!id) {
+    ctx.response.status = 401;
+    return;
+  }
+  
+  const str = JSON.stringify(body || {});
+  const path = join(folder, `${id}.json`);
+  
   await Deno.writeTextFile(path, str);
+  ctx.response.body = "ok";
 }
 
-export async function read(id: string): Promise<Record<string, unknown>> {
-  const path = `${folder}/${id}.json`;
+export async function read(ctx: RouterContext<string>) {
+  const id = ctx.state.user?.id;
+  
+  if (!id) {
+    ctx.response.status = 401;
+    return;
+  }
+
+  const path = join(folder, `${id}.json`);
+  
   try {
-    const data = await Deno.readTextFile(path);
-    return JSON.parse(data);
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      return {};
-    }
-    throw error;
+    const content = await Deno.readTextFile(path);
+    ctx.response.headers.set("Content-Type", "application/json");
+    ctx.response.body = JSON.parse(content);
+  } catch {
+    ctx.response.status = 404;
+    ctx.response.body = "File not found";
   }
 }

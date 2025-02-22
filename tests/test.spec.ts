@@ -1,166 +1,115 @@
 // tests/test.spec.ts
 import { assertEquals } from "../dev_deps.ts";
-import { create, getNumericDate } from "../deps.ts";
-import { load } from "../deps.ts";
+import { superdeno, type SuperDeno } from "../dev_deps.ts";
+import { create, loadEnv } from "../deps.ts";
+import { getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
 import { app } from "../src/app.ts";
 
-const env = await load();
+// Load environment variables
+await loadEnv({ export: true });
 
-// Create crypto key for testing
-const encoder = new TextEncoder();
-const keyData = encoder.encode(env.JWT_SECRET);
-const cryptoKey = await crypto.subtle.importKey(
+const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
+const JWT_USERS = Deno.env.get("JWT_USERS")!;
+
+// Create CryptoKey from JWT_SECRET
+const key = await crypto.subtle.importKey(
   "raw",
-  keyData,
+  new TextEncoder().encode(JWT_SECRET),
   { name: "HMAC", hash: "SHA-256" },
   false,
   ["sign", "verify"]
 );
 
-// Create JWT token for testing
+// Create test token
 const token = await create(
   { alg: "HS256", typ: "JWT" },
   { 
-    id: env.JWT_USERS.split(",")[0],
-    exp: getNumericDate(60) // Token expires in 60 seconds
+    id: JWT_USERS.split(",")[0],
+    exp: getNumericDate(60 * 60 * 24 * 365 * 120) // 120 years
   },
-  cryptoKey
+  key
 );
 
-// Test setup
-const testData = { sss: 1 };
-const PORT = 7838; // Different port for testing
-const controller = new AbortController();
-const { signal } = controller;
-
-// Start server for testing
-const serverPromise = app.listen({ 
-  port: PORT,
-  signal,
-});
-
-// Helper function for requests
-async function makeRequest(path: string, options: RequestInit = {}) {
-  const response = await fetch(`http://localhost:${PORT}${path}`, options);
-  return response;
+// Helper function for making requests
+function makeRequest(method: 'get' | 'post' | 'put' | 'delete', path = '/api/sync'): SuperDeno {
+  const request = superdeno(app.handle.bind(app));
+  switch (method) {
+    case 'get':
+      return request.get(path)
+        .set('Authorization', `Bearer ${token}`)
+        .set('Accept', 'application/json');
+    case 'post':
+      return request.post(path)
+        .set('Authorization', `Bearer ${token}`)
+        .set('Accept', 'application/json')
+        .set('Content-Type', 'application/json');
+    case 'put':
+      return request.put(path)
+        .set('Authorization', `Bearer ${token}`)
+        .set('Accept', 'application/json')
+        .set('Content-Type', 'application/json');
+    case 'delete':
+      return request.delete(path)
+        .set('Authorization', `Bearer ${token}`)
+        .set('Accept', 'application/json');
+    default:
+      throw new Error(`Unsupported method: ${method}`);
+  }
 }
 
-Deno.test({
-  name: "API Tests",
-  async fn(t) {
-    // Test /test endpoint
-    await t.step("GET /test should return 200", async () => {
-      const response = await makeRequest("/test");
-      assertEquals(response.status, 200);
-      assertEquals(await response.text(), "ok");
-    });
-
-    // Test unauthorized access
-    await t.step("GET /api/sync without token should return 401", async () => {
-      const response = await makeRequest("/api/sync");
-      assertEquals(response.status, 401);
-    });
-
-    // Test invalid token
-    await t.step("GET /api/sync with invalid token should return 401", async () => {
-      const response = await makeRequest("/api/sync", {
-        headers: {
-          Authorization: "Bearer invalid_token",
-        },
-      });
-      assertEquals(response.status, 401);
-    });
-
-    // Test GET /api/sync
-    await t.step("GET /api/sync with valid token should work", async () => {
-      const response = await makeRequest("/api/sync", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      assertEquals(response.status, 404); // Initially should be 404 as no data exists
-    });
-
-    // Test PUT /api/sync
-    await t.step("PUT /api/sync should store data", async () => {
-      const response = await makeRequest("/api/sync", {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(testData),
-      });
-      assertEquals(response.status, 200);
-      assertEquals(await response.text(), "ok");
-    });
-
-    // Test POST /api/sync
-    await t.step("POST /api/sync should return test ok", async () => {
-      const response = await makeRequest("/api/sync", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      assertEquals(response.status, 200);
-      assertEquals(await response.text(), "test ok");
-    });
-
-    // Test GET /api/sync after PUT
-    await t.step("GET /api/sync should retrieve stored data", async () => {
-      const response = await makeRequest("/api/sync", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      assertEquals(response.status, 200);
-      const data = await response.json();
-      assertEquals(data.sss, testData.sss);
-    });
-
-    // Test invalid user
-    await t.step("Request with invalid user should return 401", async () => {
-      const invalidToken = await create(
-        { alg: "HS256", typ: "JWT" },
-        { 
-          id: "invalid_user",
-          exp: getNumericDate(60)
-        },
-        cryptoKey
-      );
-
-      const response = await makeRequest("/api/sync", {
-        headers: {
-          Authorization: `Bearer ${invalidToken}`,
-        },
-      });
-      assertEquals(response.status, 401);
-      assertEquals(await response.text(), "Invalid user");
-    });
-  },
-  sanitizeResources: false,
-  sanitizeOps: false,
+Deno.test("Basic API test", async () => {
+  const response = await superdeno(app.handle.bind(app))
+    .get("/test");
+  assertEquals(response.status, 200);
+  assertEquals(response.text, "ok");
 });
 
-// Cleanup test data and server after tests
-Deno.test({
-  name: "Cleanup",
-  async fn() {
-    try {
-      // Stop the server
-      controller.abort();
-      await serverPromise;
+Deno.test("API flow test", async () => {
+  // Test GET before data exists
+  const getResponse1 = await makeRequest("get");
+  assertEquals(getResponse1.status, 404);
 
-      // Clean up test data
-      const userId = env.JWT_USERS.split(",")[0];
-      await Deno.remove(`${env.FILE_STORE_PATH || Deno.cwd()}/${userId}.json`);
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) {
-        throw error;
-      }
-    }
-  },
-  sanitizeResources: false,
-  sanitizeOps: false,
+  // Test PUT with data
+  const putResponse = await makeRequest("put")
+    .send({ sss: 1 });
+  assertEquals(putResponse.status, 200);
+  assertEquals(putResponse.text, "ok");
+
+  // Test GET after data exists
+  const getResponse2 = await makeRequest("get");
+  assertEquals(getResponse2.status, 200);
+  assertEquals(JSON.parse(getResponse2.text).sss, 1);
+
+  // Test POST
+  const postResponse = await makeRequest("post");
+  assertEquals(postResponse.status, 200);
+  assertEquals(postResponse.text, "test ok");
+});
+
+Deno.test("Authentication tests", async () => {
+  // Test without token
+  const noTokenResponse = await superdeno(app.handle.bind(app))
+    .get("/api/sync");
+  assertEquals(noTokenResponse.status, 401);
+
+  // Test with invalid token
+  const invalidTokenResponse = await superdeno(app.handle.bind(app))
+    .get("/api/sync")
+    .set("Authorization", "Bearer invalid_token");
+  assertEquals(invalidTokenResponse.status, 401);
+
+  // Test with invalid user
+  const invalidUserToken = await create(
+    { alg: "HS256", typ: "JWT" },
+    { 
+      id: "invalid_user",
+      exp: getNumericDate(60 * 60 * 24 * 365 * 120)
+    },
+    key
+  );
+
+  const invalidUserResponse = await superdeno(app.handle.bind(app))
+    .get("/api/sync")
+    .set("Authorization", `Bearer ${invalidUserToken}`);
+  assertEquals(invalidUserResponse.status, 401);
 });

@@ -10,10 +10,11 @@
   },
   "imports": {
     "@/": "./",
-    "oak": "https://deno.land/x/oak@v10.6.0/mod.ts",
-    "dotenv": "https://deno.land/x/dotenv@v3.2.0/mod.ts",
-    "djwt": "https://deno.land/x/djwt@v2.7/mod.ts",
-    "testing/": "https://deno.land/std@0.140.0/testing/"
+    "oak": "https://deno.land/x/oak@v11.1.0/mod.ts",
+    "std/": "https://deno.land/std@0.180.0/",
+    "testing/": "https://deno.land/std@0.180.0/testing/",
+    "djwt": "https://deno.land/x/djwt@v2.8/mod.ts",
+    "dotenv": "https://deno.land/std@0.180.0/dotenv/mod.ts"
   },
   "fmt": {
     "files": {
