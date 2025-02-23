@@ -1,7 +1,7 @@
-import { resolve } from "../deps.ts";
-import * as fileStore from "./file-store.ts";
+import { resolve } from '../deps.ts';
+import * as fileStore from './file-store.ts';
 
-async function pathExists (path: string): Promise<boolean> {
+async function pathExists(path: string): Promise<boolean> {
   try {
     await Deno.stat(path);
     return true;
@@ -13,8 +13,7 @@ async function pathExists (path: string): Promise<boolean> {
   }
 }
 
-
-const userStorePath = resolve(Deno.cwd(), "src", "store.ts");
+const userStorePath = resolve(Deno.cwd(), 'src', 'store.ts');
 
 let userStore;
 

@@ -1,5 +1,5 @@
-import { Application, Router, verify } from "../deps.ts";
-import type { RouterMiddleware, State } from "../deps.ts";
+import { Application, Router, verify } from '../deps.ts';
+import type { RouterMiddleware, State } from '../deps.ts';
 
 const app = new Application<State>();
 const router = new Router<State>();
@@ -22,36 +22,36 @@ app.use(async (ctx, next) => {
       ctx.response.body = err.message;
     } else {
       ctx.response.status = 500;
-      ctx.response.body = "An unknown error occurred";
+      ctx.response.body = 'An unknown error occurred';
     }
   }
 });
 
 // JWT authentication middleware
 const jwtAuth: RouterMiddleware<string> = async (ctx, next) => {
-  const authHeader = ctx.request.headers.get("Authorization");
+  const authHeader = ctx.request.headers.get('Authorization');
   if (!authHeader) {
     ctx.response.status = 401;
-    ctx.response.body = "invalid token...";
+    ctx.response.body = 'invalid token...';
     return;
   }
 
   try {
-    const token = authHeader.split(" ")[1];
-    const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
+    const token = authHeader.split(' ')[1];
+    const JWT_SECRET = Deno.env.get('JWT_SECRET')!;
     const key = await crypto.subtle.importKey(
-      "raw",
+      'raw',
       new TextEncoder().encode(JWT_SECRET),
-      { name: "HMAC", hash: "SHA-256" },
+      { name: 'HMAC', hash: 'SHA-256' },
       false,
-      ["sign", "verify"]
+      ['sign', 'verify'],
     );
     const payload = await verify(token, key);
     ctx.state.user = payload as { id: string };
     await next();
   } catch {
     ctx.response.status = 401;
-    ctx.response.body = "invalid token...";
+    ctx.response.body = 'invalid token...';
   }
 };
 
@@ -60,30 +60,30 @@ const userCheck: RouterMiddleware<string> = async (ctx, next) => {
   const user = ctx.state.user;
   if (!user) {
     ctx.response.status = 401;
-    ctx.response.body = "invalid user...";
+    ctx.response.body = 'invalid user...';
     return;
   }
 
-  const allUsers = Deno.env.get("JWT_USERS")?.split(",") || [];
-  
+  const allUsers = Deno.env.get('JWT_USERS')?.split(',') || [];
+
   if (allUsers.includes(user.id)) {
     await next();
   } else {
     ctx.response.status = 401;
-    ctx.response.body = "invalid user...";
+    ctx.response.body = 'invalid user...';
   }
 };
 
-import { read, write } from "./file-store.ts";
+import { read, write } from './file-store.ts';
 
 router
-  .get("/test", (ctx) => {
-    ctx.response.body = "ok";
+  .get('/test', (ctx) => {
+    ctx.response.body = 'ok';
   })
-  .put("/api/sync", jwtAuth, userCheck, write)
-  .get("/api/sync", jwtAuth, userCheck, read)
-  .post("/api/sync", jwtAuth, userCheck, (ctx) => {
-    ctx.response.body = "test ok";
+  .put('/api/sync', jwtAuth, userCheck, write)
+  .get('/api/sync', jwtAuth, userCheck, read)
+  .post('/api/sync', jwtAuth, userCheck, (ctx) => {
+    ctx.response.body = 'test ok';
   });
 
 app.use(router.routes());

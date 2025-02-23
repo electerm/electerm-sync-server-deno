@@ -28,7 +28,8 @@ deno task test
 
 ## Write your own data store
 
-Just take [src/file-store.js](src/file-store.js) as an example, write your own read/write method
+Just take [src/file-store.js](src/file-store.js) as an example, write your own
+read/write method
 
 ## Sync server in other languages
 
