@@ -1,8 +1,7 @@
-import { assertEquals } from "https://deno.land/std@0.180.0/testing/asserts.ts";
+
 import { create, loadEnv } from "../deps.ts";
 import { getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
 import { resolve } from "https://deno.land/std@0.180.0/path/mod.ts";
-import { Application } from "../deps.ts";
 
 // Load environment variables
 await loadEnv({ export: true });
