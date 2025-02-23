@@ -1,4 +1,4 @@
-
+import { assertEquals } from "https://deno.land/std@0.180.0/testing/asserts.ts";
 import { create, loadEnv } from "../deps.ts";
 import { getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
 import { resolve } from "https://deno.land/std@0.180.0/path/mod.ts";
@@ -55,7 +55,30 @@ const serverPromise = app.listen({
   }
 });
 
-// Helper functions remain the same...
+// Helper function for making requests
+async function makeRequest(path: string, options: RequestInit = {}): Promise<Response> {
+  const response = await fetch(`http://localhost:${testPort}${path}`, options);
+  return response;
+}
+
+// Helper function for making authenticated requests
+async function makeAuthRequest(path: string, method = "GET", body?: unknown): Promise<Response> {
+  const options: RequestInit = {
+    method,
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  };
+
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+
+  return await makeRequest(path, options);
+}
+
 
 // Helper function to remove directory recursively
 async function removeDir(path: string) {
@@ -77,7 +100,95 @@ async function removeDir(path: string) {
   }
 }
 
-// Tests remain the same...
+
+// Tests
+Deno.test({
+  name: "Basic API test",
+  async fn() {
+    const response = await makeRequest("/test");
+    assertEquals(response.status, 200);
+    const text = await response.text();
+    assertEquals(text, "ok");
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "API flow test",
+  async fn(t) {
+    await t.step("GET before data exists", async () => {
+      const response = await makeAuthRequest("/api/sync");
+      assertEquals(response.status, 404);
+      await response.text();
+    });
+
+    await t.step("PUT data", async () => {
+      const response = await makeAuthRequest("/api/sync", "PUT", { test: "data" });
+      assertEquals(response.status, 200);
+      const text = await response.text();
+      assertEquals(text, "ok");
+    });
+
+    await t.step("GET after data exists", async () => {
+      const response = await makeAuthRequest("/api/sync");
+      assertEquals(response.status, 200);
+      const data = await response.json();
+      assertEquals(data.test, "data");
+    });
+
+    await t.step("POST test", async () => {
+      const response = await makeAuthRequest("/api/sync", "POST");
+      assertEquals(response.status, 200);
+      const text = await response.text();
+      assertEquals(text, "test ok");
+    });
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "Authentication tests",
+  async fn(t) {
+    await t.step("Request without token", async () => {
+      const response = await makeRequest("/api/sync");
+      assertEquals(response.status, 401);
+      await response.text();
+    });
+
+    await t.step("Request with invalid token", async () => {
+      const response = await makeRequest("/api/sync", {
+        headers: {
+          "Authorization": "Bearer invalid_token"
+        }
+      });
+      assertEquals(response.status, 401);
+      await response.text();
+    });
+
+    await t.step("Request with invalid user", async () => {
+      const invalidToken = await create(
+        { alg: "HS256", typ: "JWT" },
+        {
+          id: "invalid_user",
+          exp: getNumericDate(60 * 60)
+        },
+        key
+      );
+
+      const response = await makeRequest("/api/sync", {
+        headers: {
+          "Authorization": `Bearer ${invalidToken}`
+        }
+      });
+      assertEquals(response.status, 401);
+      await response.text();
+    });
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
 
 // Cleanup
 Deno.test({
