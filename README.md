@@ -15,17 +15,15 @@ cd electerm-sync-server-deno
 cp .env.sample .env
 
 # Start the server
-deno run --allow-net --allow-read --allow-env --allow-write src/server.ts
+deno task start
 
 # Server will show: server running at http://127.0.0.1:7837
+```
 
 ## Test
 
 ```bash
-# create env file, then edit .env
-cp sample.env .env
-
-deno test --allow-net --allow-read --allow-env --allow-write tests/
+deno task test
 ```
 
 ## Write your own data store
