@@ -1,4 +1,5 @@
-import { join } from "../deps.ts";
+import "./init.ts";
+import { resolve } from "../deps.ts";
 import type { RouterContext } from "../deps.ts";
 
 const folder = Deno.env.get("FILE_STORE_PATH") || Deno.cwd();
@@ -13,8 +14,8 @@ export async function write(ctx: RouterContext<string>) {
   }
   
   const str = JSON.stringify(body || {});
-  const path = join(folder, `${id}.json`);
-  
+  const path = resolve(folder, `${id}.json`);
+
   await Deno.writeTextFile(path, str);
   ctx.response.body = "ok";
 }
@@ -27,7 +28,7 @@ export async function read(ctx: RouterContext<string>) {
     return;
   }
 
-  const path = join(folder, `${id}.json`);
+  const path = resolve(folder, `${id}.json`);
   
   try {
     const content = await Deno.readTextFile(path);

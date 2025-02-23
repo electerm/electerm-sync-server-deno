@@ -1,11 +1,24 @@
-import { exists, join } from "../deps.ts";
+import { resolve } from "../deps.ts";
 import * as fileStore from "./file-store.ts";
 
-const userStorePath = join(Deno.cwd(), "src", "store.ts");
+async function pathExists (path: string): Promise<boolean> {
+  try {
+    await Deno.stat(path);
+    return true;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+
+const userStorePath = resolve(Deno.cwd(), "src", "store.ts");
 
 let userStore;
 
-if (await exists(userStorePath)) {
+if (await pathExists(userStorePath)) {
   userStore = await import(userStorePath);
 } else {
   userStore = fileStore;

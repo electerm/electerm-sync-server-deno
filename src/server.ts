@@ -1,7 +1,5 @@
-import { loadEnv } from "../deps.ts";
+import "./init.ts";
 import { app } from "./app.ts";
-
-await loadEnv({ export: true });
 
 const PORT = Number(Deno.env.get("PORT") || 7837);
 const HOST = Deno.env.get("HOST") || "127.0.0.1";

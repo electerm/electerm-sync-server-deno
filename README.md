@@ -8,10 +8,10 @@ Requires Deno 1.x+
 
 ```bash
 # Clone the repository
-git clone [your-repo-url]
+git clone https://github.com/electerm/electerm-sync-server-deno.git
 cd electerm-sync-server-deno
 
-# Create env file
+# Create env file, and change JWT_SECRET
 cp .env.sample .env
 
 # Start the server

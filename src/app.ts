@@ -1,6 +1,5 @@
 import { Application, Router, verify } from "../deps.ts";
-import type { RouterMiddleware, State, RouterContext } from "../deps.ts";
-import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
+import type { RouterMiddleware, State } from "../deps.ts";
 
 const app = new Application<State>();
 const router = new Router<State>();
