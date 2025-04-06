@@ -18,6 +18,7 @@ cp .env.sample .env
 deno task start
 
 # Server will show: server running at http://127.0.0.1:7837
+# Then you can use http://127.0.0.1:7837/api/sync as API Url in electerm custom sync
 ```
 
 ## Test
