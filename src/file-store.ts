@@ -1,8 +1,18 @@
 import './init.ts';
 import { resolve } from '../deps.ts';
 import type { RouterContext } from '../deps.ts';
+import { DB } from 'sqlite3';
 
-const folder = Deno.env.get('FILE_STORE_PATH') || Deno.cwd();
+const dbPath = Deno.env.get('DB_PATH') || resolve(Deno.cwd(), 'data.db');
+const db = new DB(dbPath);
+
+// Initialize database table
+db.execute(`
+  CREATE TABLE IF NOT EXISTS user_data (
+    user_id TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+  )
+`);
 
 export async function write(ctx: RouterContext<string>) {
   const body = await ctx.request.body().value;
@@ -14,13 +24,13 @@ export async function write(ctx: RouterContext<string>) {
   }
 
   const str = JSON.stringify(body || {});
-  const path = resolve(folder, `${id}.json`);
+  
+  db.query('INSERT OR REPLACE INTO user_data (user_id, data) VALUES (?, ?)', [id, str]);
 
-  await Deno.writeTextFile(path, str);
   ctx.response.body = 'ok';
 }
 
-export async function read(ctx: RouterContext<string>) {
+export function read(ctx: RouterContext<string>) {
   const id = ctx.state.user?.id;
 
   if (!id) {
@@ -28,14 +38,15 @@ export async function read(ctx: RouterContext<string>) {
     return;
   }
 
-  const path = resolve(folder, `${id}.json`);
+  const result = db.query('SELECT data FROM user_data WHERE user_id = ?', [id]);
 
-  try {
-    const content = await Deno.readTextFile(path);
+  const row = result[0] as [string] | undefined;
+
+  if (row) {
     ctx.response.headers.set('Content-Type', 'application/json');
-    ctx.response.body = JSON.parse(content);
-  } catch {
+    ctx.response.body = JSON.parse(row[0]);
+  } else {
     ctx.response.status = 404;
-    ctx.response.body = 'File not found';
+    ctx.response.body = 'Data not found';
   }
 }

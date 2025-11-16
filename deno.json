@@ -14,7 +14,8 @@
     "std/": "https://deno.land/std@0.180.0/",
     "testing/": "https://deno.land/std@0.180.0/testing/",
     "djwt": "https://deno.land/x/djwt@v2.8/mod.ts",
-    "dotenv": "https://deno.land/std@0.180.0/dotenv/mod.ts"
+    "dotenv": "https://deno.land/std@0.180.0/dotenv/mod.ts",
+    "sqlite3": "https://deno.land/x/sqlite/mod.ts"
   },
   "fmt": {
     "files": {
